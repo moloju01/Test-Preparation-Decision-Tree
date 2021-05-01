@@ -1,0 +1,61 @@
+#change WD to fit your data
+setwd("/Users/justinamolokwu/downloads/Analytical Thinking II")
+studentperformance<-read.csv("studentperformancecoded.csv")
+
+#get rid of NAs, fine here because no NAs! 
+studentperformance<-na.omit(studentperformance)
+
+#make sure variable read as binary
+studentperformance$test.preparation.course<-as.factor(studentperformance$test.preparation.course)
+
+#packages you are going to need: install first!!!
+library(ISLR)
+library(tree)
+library (rpart)
+library(rpart.plot)
+
+#look at your criterion variable
+table(studentperformance$test.preparation.course)
+
+#creating decision tree
+studentperformancetree = rpart(test.preparation.course ~ ., data = studentperformance)
+summary(studentperformancetree)
+
+#plotting decision tree
+rpart.plot(studentperformancetree,cex = .5)
+text(studentperformancetree, pretty = 0)
+### NOTE: left = YES, right = NO
+
+#split into trianing versus test for pruning, 66% training
+set.seed(331)
+training=sample(1:nrow(studentperformance), 660)
+
+#create training tree
+traintree = rpart(test.preparation.course  ~., studentperformance, subset=training)
+rpart.plot(traintree,cex=.5)
+text(traintree, pretty=0)
+
+#NOTE: Trees differ because train tree is looking at training dataset, which is only 66% of sample (606)
+
+#predicting on test set
+test = predict(traintree, studentperformance[-training,], type="class")
+
+#check how well data does
+with(studentperformance[-training,], table(test, studentperformance[-training,]$test.preparation.course))
+
+#predicts 71.8% of data correctly
+
+#cross validation for pruning
+names(studentperformance$test.preparation.course)<- c("none","completed")
+
+studentperformanceprune<- prune(traintree, cp= studentperformancetree$cptable[which.min(studentperformancetree$cptable[,"xerror"]),"CP"])
+
+rpart.plot(studentperformanceprune,cex=.85,uniform=TRUE,main="Classification Tree for Test Prep and Student Test Performance")
+text(studentperformanceprune,pretty=2)
+
+
+new.pred = predict(studentperformanceprune, studentperformance[-training,], type="class")
+with(studentperformance[-training,], table(new.pred, studentperformance[-training,]$test.preparation.course))
+
+# predicts 71.8% of data correctly
+
